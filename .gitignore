@@ -1,0 +1,3 @@
+.clangd
+.zig-cache/
+zig-out/
