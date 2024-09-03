@@ -11,7 +11,7 @@ Instead of passing template parameters like normal function parameters; Like thi
 Color<0, 0, 255, 0>
 ----
 
-With 'Paramize' you can define the same color with something like this:
+With Paramize you can define the same color with something like this:
 
 ----
 Color<ColorComp::B<255>>
@@ -22,9 +22,8 @@ to write the default values of components earlier in the template parameters aga
 to  change the value of the blue component.
 
 == Example Usage:
----
 
-See *'include/example.hpp'* for the entire example
+See *include/example.hpp* for the entire example
 
 [source, C++]
 ----
@@ -66,7 +65,6 @@ using Blue = Color<ColorComp::B<255>>;
 ----
 
 == Compiling Examples
----
 
 To build all examples just use the zig compiler (built with the flags -Denable-llvm=true and 
 -Duse-llvm=true) like you would normally build any zig project. 
