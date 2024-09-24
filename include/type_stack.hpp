@@ -17,21 +17,17 @@ concept Opt = true;
 template<typename type>
 concept Nopt = !is_null_v<type>;
 
+template<Nopt... stack>
+struct TypeStack;
+
 template<typename type, typename top>
 concept StackTrailItem = !is_null_v<top>;
 
 template<Opt top = Null, StackTrailItem<top>... trail>
-struct GetStackTopHelper {
-    using _value = top;
+struct Split {
+    using _top = top;
+    using _trail = TypeStack<trail...>;
 };
-
-template<Nopt... stack>
-using getStackTop = GetStackTopHelper<stack...>::_value;
-
-// ########################
-
-template<Nopt... stack>
-struct TypeStack;
 
 template<typename type>
 static constexpr bool is_type_stack_v = false;
@@ -60,47 +56,42 @@ concept AnyFilledTypeStack = AnyTypeStack<type> && is_filled_type_stack_v<type>;
 template<Nopt... stack>
 struct TypeStack {
     using _this = TypeStack<stack...>;
-    using _top = getStackTop<stack...>;
+
+    using _top = Split<stack...>::_top; 
+    using _trail = Split<stack...>::_trail;
 
     static constexpr size_t _lenght = sizeof...(stack);
 
-    template<Opt top = Null, StackTrailItem<top>... trail>
-    struct PopHelper {
-        using _value = TypeStack<trail...>;
-    };
-
-    using pop = PopHelper<stack...>::_value;
-
     template<size_t n, AnyTypeStack cur>
-    struct PopNHelper;
+    struct PopHelper;
 
     template<size_t n, AnyFilledTypeStack cur>
-    struct PopNHelper<n, cur> {
-        using _value = PopNHelper<n -1, typename cur::pop>;
+    struct PopHelper<n, cur> {
+        using _value = PopHelper<n - 1, typename cur::_trail>::_value;
     };
 
     template<size_t n, AnyEmptyTypeStack cur>
-    struct PopNHelper<n, cur> {
+    struct PopHelper<n, cur> {
         using _value = cur; 
     };
 
     template<AnyTypeStack cur>
-    struct PopNHelper<0, cur> {
+    struct PopHelper<0, cur> {
         using _value = cur; 
     };
 
     template<size_t n>
-    using popN = PopNHelper<n, _this>;
+    using pop = PopHelper<n, _this>::_value;
 
     template<Nopt... items>
-    using append = TypeStack<stack..., items...>;
+    using push = TypeStack<items..., stack...>;
 
     template<Nopt type, AnyTypeStack cur>
     struct ContainsHelper;
 
     template<Nopt type, AnyFilledTypeStack cur>
     struct ContainsHelper<type, cur> {
-        using _next = ContainsHelper<type, typename cur::pop>;
+        using _next = ContainsHelper<type, typename cur::template pop<1>>;
 
         static constexpr bool _value = std::is_same_v<type, typename cur::_top> || _next::_value;
     };
@@ -119,7 +110,7 @@ struct CheckStackTypeConstrHelper;
 
 template<template<typename> typename constr, AnyFilledTypeStack cur>
 struct CheckStackTypeConstrHelper<constr, cur> {
-    using _next = CheckStackTypeConstrHelper<constr, typename cur::pop>;
+    using _next = CheckStackTypeConstrHelper<constr, typename cur::template pop<1>>;
 
     static constexpr bool _value = constr<typename cur::_top>::_value && _next::_value;
 };
@@ -138,7 +129,7 @@ struct StackItemsUniqueHelper;
 
 template<AnyFilledTypeStack stack, AnyTypeStack found>
 struct StackItemsUniqueHelper<stack, found> {
-    using _next = StackItemsUniqueHelper<typename stack::pop, typename found::template append<typename stack::_top>>;
+    using _next = StackItemsUniqueHelper<typename stack::template pop<1>, typename found::template push<typename stack::_top>>;
 
     static constexpr bool _value = !found::template contains_v<typename stack::_top> && _next::_value;
 };

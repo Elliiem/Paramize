@@ -33,7 +33,7 @@ template<typename type>
 concept AnyFilledTagStack = AnyTagStack<type> && is_filled_type_stack_v<type>;
 
 template<typename type>
-concept AnyEmptyTagStack = AnyTagStack<type> && is_empty_type_stack_v<type>;
+concept EmptyTagStack = AnyTagStack<type> && is_empty_type_stack_v<type>;
 
 template<Tag tag>
 struct Parameter {
@@ -53,7 +53,7 @@ template<AnyParamValue param>
 using tagof = param::_tag;
 
 template<typename type>
-struct IsParam {
+struct IsParameter {
     static constexpr bool _value = is_parameter_v<type>;
 };
 
@@ -61,7 +61,7 @@ template<AnyParamValue... stack>
 using ParamStack = TypeStack<stack...>;
 
 template<typename type>
-static constexpr bool is_parameter_stack_v = is_type_stack_v<type> && check_stack_type_constr_v<IsParam, type>;
+static constexpr bool is_parameter_stack_v = is_type_stack_v<type> && check_stack_type_constr_v<IsParameter, type>;
 
 template<typename type>
 concept AnyParamStack = is_parameter_stack_v<type>;
@@ -70,19 +70,19 @@ template<typename type>
 concept AnyFilledParamStack = AnyParamStack<type> && is_filled_type_stack_v<type>;
 
 template<typename type>
-concept AnyEmptyParamStack = AnyParamStack<type> && is_empty_type_stack_v<type>;
+concept EmptyParamStack = AnyParamStack<type> && is_empty_type_stack_v<type>;
 
 template<AnyParamStack stack, AnyTagStack constr>
 struct CheckParamStackTagConstrHelper;
 
 template<AnyFilledParamStack stack, AnyTagStack constr>
 struct CheckParamStackTagConstrHelper<stack, constr> {
-    using _next = CheckParamStackTagConstrHelper<typename stack::pop, constr>;
+    using _next = CheckParamStackTagConstrHelper<typename stack::template pop<1>, constr>;
 
     static constexpr bool _value = constr::template contains_v<tagof<typename stack::_top>> && _next::_value;
 };
 
-template<AnyEmptyParamStack stack, AnyTagStack constr>
+template<EmptyParamStack stack, AnyTagStack constr>
 struct CheckParamStackTagConstrHelper<stack, constr> {
     static constexpr bool _value = true;
 };
@@ -97,7 +97,7 @@ template<typename type, typename constr>
 concept AnyFilledTaggedParamStack = AnyTaggedParamStack<type, constr> && is_filled_type_stack_v<type>;
 
 template<typename type, typename constr>
-concept AnyEmptyTaggedParamStack = AnyTaggedParamStack<type, constr> && is_empty_type_stack_v<type>;
+concept EmptyTaggedParamStack = AnyTaggedParamStack<type, constr> && is_empty_type_stack_v<type>;
 
 template<typename type>
 concept AnySetParamStack = AnyParamStack<type> && is_set_type_stack_v<type>;
@@ -106,7 +106,7 @@ template<typename type>
 concept AnyFilledSetParamStack = AnySetParamStack<type> && is_filled_type_stack_v<type>;
 
 template<typename type>
-concept AnyEmptySetParamStack = AnySetParamStack<type> && is_empty_type_stack_v<type>;
+concept EmptySetParamStack = AnySetParamStack<type> && is_empty_type_stack_v<type>;
 
 template<typename type, typename constr>
 concept AnyTaggedSetParamStack = AnySetParamStack<type> && AnyTaggedParamStack<type, constr>;
@@ -115,19 +115,19 @@ template<typename type, typename constr>
 concept AnyFilledTaggedSetParamStack = AnyTaggedSetParamStack<type, constr> && is_filled_type_stack_v<type>;
 
 template<typename type, typename constr>
-concept AnyEmptyTaggedSetParamStack = AnyTaggedSetParamStack<type, constr> && is_empty_type_stack_v<type>;
+concept EmptyTaggedSetParamStack = AnyTaggedSetParamStack<type, constr> && is_empty_type_stack_v<type>;
 
 template<AnyParamStack stack, Tag search>
 struct ParamStackContainsTagHelper;
 
 template<AnyFilledParamStack stack, Tag search>
 struct ParamStackContainsTagHelper<stack, search> {
-    using _next = ParamStackContainsTagHelper<typename stack::pop, search>;
+    using _next = ParamStackContainsTagHelper<typename stack::template pop<1>, search>;
 
     static constexpr bool _value = std::is_same_v<tagof<typename stack::_top>, search> || _next::_value;
 };
 
-template<AnyEmptyParamStack stack, Tag search>
+template<EmptyParamStack stack, Tag search>
 struct ParamStackContainsTagHelper<stack, search> {
     static constexpr bool _value = false;
 };
@@ -210,7 +210,7 @@ template<typename type>
 concept AnyFilledParamRegionStack = AnyParamRegionStack<type> && is_filled_type_stack_v<type>;
 
 template<typename type>
-concept AnyEmptyParamRegionStack = AnyParamRegionStack<type> && is_empty_type_stack_v<type>;
+concept EmptyParamRegionStack = AnyParamRegionStack<type> && is_empty_type_stack_v<type>;
 
 // ##################################################
 
@@ -232,7 +232,7 @@ template<AnyFilledTypeStack results>
 struct MergeResultsHelper<results> {
     using _cur = results::_top;
 
-    using _next = MergeResultsHelper<typename results::pop>;
+    using _next = MergeResultsHelper<typename results::template pop<1>>;
 
     using _value = std::conditional_t<is_okay_v<_cur>, typename _next::_value, _cur>;
 };
@@ -290,7 +290,19 @@ template<typename type>
 concept AnyParseRegionError = is_parse_region_error_v<type>;
 
 template<typename type>
-concept AnyCheckRegionResult = Okay<type> || AnyParseRegionError<type>;
+concept AnyParseRegionRawResult = Okay<type> || AnyParseRegionError<type>;
+
+template<AnyParamRegion region, AnyTaggedParamStack<typename region::_tagset> params>
+struct ParseRegionOkayResult {
+    using _region = region;
+    using _params = params;
+};
+
+template<typename type>
+static constexpr bool is_parse_region_ok_result_v = false;
+
+template<AnyParamRegion region, AnyTaggedParamStack<typename region::_tagset> parsed>
+static constexpr bool is_parse_region_ok_result_v<ParseRegionOkayResult<region, parsed>> = true;
 
 template<AnyParseRegionError err, AnyParamRegion region, AnyParamStack params>
 struct ParseRegionErrorResult {
@@ -305,24 +317,38 @@ static constexpr bool is_parse_region_error_result_v = false;
 template<AnyParseRegionError err, AnyParamRegion region, AnyParamStack params>
 static constexpr bool is_parse_region_error_result_v<ParseRegionErrorResult<err, region, params>> = true;
 
-template<AnyParamRegion region, AnyTaggedParamStack<typename region::_tagset> params>
-struct ParseRegionResult {
-    using _region = region;
-    using _params = params;
+template<typename type>
+static constexpr bool is_parse_region_result_v = is_parse_region_ok_result_v<type> || is_parse_region_error_result_v<type>;
+
+template<typename type>
+concept AnyParseRegionResult = is_parse_region_result_v<type>; 
+
+template<AnyParseRegionResult... stack>
+using ParseRegionResultStack = TypeStack<stack...>;
+
+template<typename type>
+struct IsParseRegionResult {
+    static constexpr bool _value = is_parse_region_result_v<type>;
 };
 
 template<typename type>
-static constexpr bool is_parse_region_result_v = false;
+static constexpr bool is_parse_region_result_stack_v = is_type_stack_v<type> && check_stack_type_constr_v<IsParseRegionResult, type>;
 
-template<AnyParamRegion region, AnyTaggedParamStack<typename region::_tagset> parsed>
-static constexpr bool is_parse_region_result_v<ParseRegionResult<region, parsed>> = true;
+template<typename type>
+concept AnyParseRegionResultStack = is_parse_region_result_stack_v<type>;
 
-template<AnyCheckRegionResult check, AnyParamRegion region, AnyParamStack params>
+template<typename type>
+concept AnyFilledParseRegionResultStack = AnyParseRegionResultStack<type> && is_filled_type_stack_v<type>;
+
+template<typename type>
+concept EmptyParseRegionResultStack = AnyParseRegionResultStack<type> && is_empty_type_stack_v<type>;
+
+template<AnyParseRegionRawResult check, AnyParamRegion region, AnyParamStack params>
 struct ParseRegionResultWrapper;
 
 template<Okay check, AnyParamRegion region, AnyParamStack params>
 struct ParseRegionResultWrapper<check, region, params> {
-    using _value = ParseRegionResult<region, params>;
+    using _value = ParseRegionOkayResult<region, params>;
 };
 
 template<AnyParseRegionError check, AnyParamRegion region, AnyParamStack params>
@@ -362,7 +388,7 @@ struct GrabRegionHelper {
     using _value = parsed;
 };
 
-template<AnyParamRegion region, AnyEmptyParamStack params, AnyParamStack parsed, AnyOptParamRegion next>
+template<AnyParamRegion region, EmptyParamStack params, AnyParamStack parsed, AnyOptParamRegion next>
 struct GrabRegionHelper<region, params, parsed, next> {
     using _value = parsed;
 };
@@ -370,8 +396,8 @@ struct GrabRegionHelper<region, params, parsed, next> {
 template<AnyParamRegion region, AnyFilledParamStack params, AnyParamStack parsed, AnyOptParamRegion next>
     requires is_part_of_region_v<typename params::_top, region, parsed, next>
 struct GrabRegionHelper<region, params, parsed, next> {
-    using _next_parsed = parsed::template append<typename params::_top>;
-    using _next_params = params::pop;
+    using _next_parsed = parsed::template push<typename params::_top>;
+    using _next_params = params::template pop<1>;
 
     using _next = GrabRegionHelper<region, _next_params, _next_parsed, next>;
 
@@ -389,8 +415,8 @@ struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _top = stack::_top;
     using _tag = tagof<_top>;
 
-    using _next_stack = stack::pop;
-    using _next_checked = checked::template append<_top>;
+    using _next_stack = stack::template pop<1>;
+    using _next_checked = checked::template push<_top>;
 
     static constexpr bool _is_valid_type = region::_tagset::template contains_v<_tag>;
     static constexpr bool _is_redifinition = param_stack_contains_tag_v<checked, _tag>;
@@ -405,7 +431,7 @@ struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _value = std::conditional_t<_is_valid, _if_valid, _if_not_valid>;
 };
 
-template<AnySetParamRegion region, AnyParamStack parsed, AnyEmptyParamStack stack, AnyParamStack checked>
+template<AnySetParamRegion region, AnyParamStack parsed, EmptyParamStack stack, AnyParamStack checked>
 struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _value = Ok;
 };
@@ -415,8 +441,8 @@ struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _cur = stack::_top;
     using _tag = tagof<_cur>;
 
-    using _next_stack = stack::pop;
-    using _next_checked = checked::template append<_cur>;
+    using _next_stack = stack::template pop<1>;
+    using _next_checked = checked::template push<_cur>;
 
     static constexpr bool _is_valid_type = region::_tagset::template contains_v<_tag>;
 
@@ -428,7 +454,7 @@ struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _value = std::conditional_t<_is_valid, _if_valid, _if_not_valid>;
 };
 
-template<AnyListParamRegion region, AnyParamStack parsed, AnyEmptyParamStack stack, AnyParamStack checked>
+template<AnyListParamRegion region, AnyParamStack parsed, EmptyParamStack stack, AnyParamStack checked>
 struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _value = Ok;
 };
@@ -448,13 +474,14 @@ struct CheckRegionResultDefinitionHelper<region, params, defaults, tags, checked
 
     static constexpr bool _is_valid = _is_defined || _has_default;
 
-    using _if_valid = CheckRegionResultDefinitionHelper<region, params, defaults, typename tags::pop, typename checked::template append<_cur>>::_value;
+    using _if_valid =
+        CheckRegionResultDefinitionHelper<region, params, defaults, typename tags::template pop<1>, typename checked::template push<_cur>>::_value;
     using _if_not_valid = ParseRegionError::UndefinedRequiredParameter<_cur>;
 
     using _value = std::conditional_t<_is_valid, _if_valid, _if_not_valid>;
 };
 
-template<AnySetParamRegion region, AnyParamStack params, AnyParamStack defaults, AnyEmptyTagStack tags, AnyTagStack checked>
+template<AnySetParamRegion region, AnyParamStack params, AnyParamStack defaults, EmptyTagStack tags, AnyTagStack checked>
 struct CheckRegionResultDefinitionHelper<region, params, defaults, tags, checked> {
     using _value = Ok;
 };
@@ -479,7 +506,7 @@ struct CheckParseRegionResultHelper<region, parsed> {
 
     static constexpr bool _has_limit = region::_max != 0;
 
-    static constexpr bool _too_many = parsed::_lenght > region::_max && _has_limit;
+    static constexpr bool _too_many = parsed::_lenght > region::_max&& _has_limit;
     static constexpr bool _too_little = parsed::_lenght < region::_min;
 
     using _value = std::conditional_t<_too_many, ParseRegionError::TooManyParameters,
@@ -500,3 +527,121 @@ struct ParseRegionHelper {
 
 template<AnyParamRegion region, AnyParamStack params, AnyOptParamRegion next = Null>
 using parseRegion = ParseRegionHelper<region, params, next>::_value;
+
+template<AnyParseRegionResultStack parsed>
+struct AreParseRegionResultsValidHelper;
+
+template<AnyFilledParseRegionResultStack parsed>
+struct AreParseRegionResultsValidHelper<parsed> {
+    using _cur = parsed::_top;
+
+    using _next = AreParseRegionResultsValidHelper<typename parsed::template pop<1>>;
+
+    static constexpr bool _value = is_parse_region_ok_result_v<_cur> && _next::_value;
+};
+
+template<EmptyParseRegionResultStack parsed>
+struct AreParseRegionResultsValidHelper<parsed> {
+    static constexpr bool _value = true;
+};
+
+template<AnyParseRegionResultStack parsed>
+static constexpr bool are_parse_region_results_valid_v = AreParseRegionResultsValidHelper<parsed>::_value;
+
+namespace ParseParamsError {
+struct TrailingParameters;
+}
+
+template<typename type>
+static constexpr bool is_parse_parameters_error = false;
+
+template<>
+static constexpr bool is_parse_parameters_error<ParseParamsError::TrailingParameters> = false;
+
+template<typename type>
+concept AnyParseParamsError = is_parse_parameters_error<type>;
+
+template<typename type>
+concept AnyParseParamsRawResult = Okay<type> || AnyParseParamsError<type>;
+
+template<AnyParseRegionResultStack parsed>
+struct ParseParamsOkayResult {
+    using _parsed = parsed;
+};
+
+template<typename type>
+static constexpr bool is_parse_parameters_okay_result = false;
+
+template<AnyParseRegionResultStack parsed>
+static constexpr bool is_parse_parameters_okay_result<ParseParamsOkayResult<parsed>> = true;
+
+template<AnyParseParamsError err, AnyParseRegionResultStack parsed, AnyParamStack trailing>
+struct ParseParamsErrorResult {
+    using _err = err;
+
+    using _trailing = trailing;
+
+    using _parsed = parsed;
+};
+
+template<typename type>
+static constexpr bool is_parse_parameters_error_result = false;
+
+template<AnyParseParamsError result, AnyParseRegionResultStack parsed, AnyParamStack trailing>
+static constexpr bool is_parse_parameters_error_result<ParseParamsErrorResult<result, parsed, trailing>> = true;
+
+template<typename type>
+concept AnyParseParamsResult = is_parse_parameters_okay_result<type> || is_parse_parameters_error_result<type>;
+
+template<AnyParseParamsRawResult result, AnyParseRegionResultStack parsed, AnyParamStack trailing>
+struct ParseParamsResultWrapper;
+
+template<Okay result, AnyParseRegionResultStack parsed, AnyParamStack trailing>
+struct ParseParamsResultWrapper<result, parsed, trailing> {
+    using _value = ParseParamsOkayResult<parsed>;
+};
+
+template<AnyParseParamsError result, AnyParseRegionResultStack parsed, AnyParamStack trailing>
+struct ParseParamsResultWrapper<result, parsed, trailing> {
+    using _value = ParseParamsErrorResult<result, parsed, trailing>;
+};
+
+template<AnyParamRegionStack regions, AnyParamStack params, AnyParseRegionResultStack parsed = ParseRegionResultStack<>>
+struct ParseParametersHelper;
+
+template<AnyFilledParamRegionStack regions, AnyParamStack params, AnyParseRegionResultStack parsed>
+struct ParseParametersHelper<regions, params, parsed> {
+    using _cur = regions::_top;
+    using _next_region = regions::template pop<1>::_top;
+
+    using _parsed_region = parseRegion<_cur, params, _next_region>;
+
+    using _value = ParseParametersHelper<typename regions::template pop<1>, typename params::template pop<_parsed_region::_params::_lenght>,
+        typename parsed::template push<_parsed_region>>::_value;
+};
+
+template<EmptyParamRegionStack regions, AnyParamStack params, AnyParseRegionResultStack parsed>
+struct ParseParametersHelper<regions, params, parsed> {
+    using _result = std::conditional_t<params::_lenght == 0, Ok, ParseParamsError::TrailingParameters>;
+
+    using _value = ParseParamsResultWrapper<_result, parsed, params>::_value;
+};
+
+// #################################################
+template<AnyParamRegionStack regions, AnyParamStack params>
+using parseParameters = ParseParametersHelper<regions, params>::_value;
+// #################################################
+
+template<AnyParseParamsResult parsed>
+struct AreValidParametersHelper {
+    static constexpr bool _is_error = is_parse_parameters_error_result<parsed>;
+
+    static constexpr bool _are_regions_perfect = are_parse_region_results_valid_v<typename parsed::_parsed>;
+
+    static constexpr bool _value = !_is_error && _are_regions_perfect;
+};
+
+// #################################################
+template<typename regions, typename... params>
+concept ValidParameters = is_parameter_region_stack_v<regions> && is_parameter_stack_v<TypeStack<params...>> && AreValidParametersHelper<parseParameters<regions, ParamStack<params...>>>::_value;
+// #################################################

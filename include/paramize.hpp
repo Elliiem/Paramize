@@ -1,9 +1,9 @@
 #pragma once
 
 #include "parse.hpp"
-#include <cstdint>
 
-// ########################
+#include <cmath>
+#include <cstdint>
 
 namespace ColorCompTag {
 struct R;
@@ -47,56 +47,13 @@ struct C : Parameter<CharCompTag::C> {};
 
 using char_region = SetParamRegion<CharCompTag::All>;
 using color_region = SetParamRegion<ColorCompTag::All, ParamStack<ColorComp::R<0>, ColorComp::G<0>, ColorComp::B<0>>>;
-using params = ParamStack<ColorComp::G<255>>;
 
-using res = parseRegion<color_region, params>;
+using regions = ParamRegionStack<color_region, char_region>;
 
-static_assert(std::is_same_v<res, void>);
+template<typename... params>
+    requires ValidParameters<regions, params...>
+struct Foo {
 
-// A single constraint of parameters
-// template<AnyTagSet constr, size_t max_param_c>
-// struct SetParameterRegion {};
-//
-// -- . - . --
-// struct ListParameterRegion {};
-//
-// template<...>
-// concept AnyParameterRegion
-//
-// template<AnyParameterRegion... regions>
-// using ParameterRegionStack = TypeStack<regions...>;
-//
-// template<AnyFilledTypeStack stack>
-// struct IsParameterRegionStackHelper {
-//     using _next = IsParameterStackHelper<typeanme stack::pop>
-//
-//     using _value = AnyParameterRegion<stack::_top> && _next::_value;
-// };
-//
-// template<AnyEmptyTypeStack stack>
-// struct IsParameterRegionStackHelper<stack> {
-//    using _value = AnyParameterRegion<stack::_top>;
-// }
-//
-// template<typename type>
-// constexpr bool is_parameter_region_stack = IsParameterRegionStackHelper<...>::_value;
-//
-// teplate<typename type>
-// concept AnyParameterRegionStack =
-//
-// template<AnyParameterRegionStack regions>
-// concept ConstrainedParams = ...
-//
-// template<AnyTagSet constr, ConstrainedParmeterValue<constr>... stack>
-// struct ParameterStack {
-//     using _top = stack_top_t<stack>
-//
-//
-//     ...
-// }
+};
 
-// template<typename... params>
-//     requires TaggedParamSet<color_tag_set, params...>
-// struct Color{
-//
-// };
+static constexpr Foo<ColorComp::G<255>, CharComp::A, CharComp::B, CharComp::C> foo;
