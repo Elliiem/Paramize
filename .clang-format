@@ -43,7 +43,7 @@ IndentWrappedFunctionNames: 'false'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 Language: Cpp
 MaxEmptyLinesToKeep: '1'
-NamespaceIndentation: None
+NamespaceIndentation: All
 PointerAlignment: Left
 ReflowComments: 'true'
 SortIncludes: 'true'

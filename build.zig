@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) void {
             "src/main.cpp",
         },
         .flags = &[_][]const u8{
-            "-std=c++23",
+            "-std=c++20",
         },
     });
 

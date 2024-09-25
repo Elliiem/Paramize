@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tag.hpp"
 #include <cstddef>
 #include <type_traits>
 
@@ -16,6 +17,12 @@ concept Opt = true;
 
 template<typename type>
 concept Nopt = !is_null_v<type>;
+
+template<typename type>
+static constexpr bool is_value_type_v = requires {type::_value;};
+
+template<typename type>
+concept AnyValueType = is_value_type_v<type>;
 
 template<Nopt... stack>
 struct TypeStack;
@@ -48,7 +55,7 @@ template<typename type>
 static constexpr bool is_filled_type_stack_v = is_type_stack_v<type> && !is_empty_type_stack_v<type>;
 
 template<typename type>
-concept AnyEmptyTypeStack = AnyTypeStack<type> && is_empty_type_stack_v<type>;
+concept EmptyTypeStack = AnyTypeStack<type> && is_empty_type_stack_v<type>;
 
 template<typename type>
 concept AnyFilledTypeStack = AnyTypeStack<type> && is_filled_type_stack_v<type>;
@@ -70,7 +77,7 @@ struct TypeStack {
         using _value = PopHelper<n - 1, typename cur::_trail>::_value;
     };
 
-    template<size_t n, AnyEmptyTypeStack cur>
+    template<size_t n, EmptyTypeStack cur>
     struct PopHelper<n, cur> {
         using _value = cur; 
     };
@@ -86,23 +93,45 @@ struct TypeStack {
     template<Nopt... items>
     using push = TypeStack<items..., stack...>;
 
-    template<Nopt type, AnyTypeStack cur>
-    struct ContainsHelper;
-
-    template<Nopt type, AnyFilledTypeStack cur>
-    struct ContainsHelper<type, cur> {
-        using _next = ContainsHelper<type, typename cur::template pop<1>>;
-
-        static constexpr bool _value = std::is_same_v<type, typename cur::_top> || _next::_value;
+    template<AnyTypeStack cur, size_t i>
+    struct AtHelper {
+        using _next = AtHelper<typename cur::template pop<1>, i - 1>;
     };
 
-    template<Nopt type, AnyEmptyTypeStack cur>
-    struct ContainsHelper<type, cur> {
+    template<AnyTypeStack cur>
+    struct AtHelper<cur, 0> {
+        using _value = cur::_top;
+    };
+
+    template<EmptyTypeStack cur, size_t i>
+    struct AtHelper<cur, i> {
+        using _value = Null;
+    };
+
+    template<size_t i>
+    using at = AtHelper<_this, i>;
+
+    template<Nopt search, AnyTypeStack cur, template<Opt, Opt> typename eval>
+    struct ContainsHelper {
+        using _next = ContainsHelper<search, typename cur::template pop<1>, eval>;
+
+        static constexpr bool _value = eval<typename cur::_top, search>::_value || _next::_value;
+    };
+
+    template<Nopt type, EmptyTypeStack cur, template<Opt, Opt> typename cmp>
+        requires AnyValueType<cmp<Null, Null>>
+    struct ContainsHelper<type, cur, cmp> {
         static constexpr bool _value = false;
     };
 
-    template<Nopt type>
-    static constexpr bool contains_v = ContainsHelper<type, _this>::_value;
+    template<typename a, typename b>
+    struct IsSameCmp {
+        static constexpr bool _value = std::is_same_v<a, b>;
+    };
+
+    template<Nopt type, template<Opt, Opt> typename eval = IsSameCmp>
+        requires AnyValueType<eval<Null, Null>>
+    static constexpr bool contains_v = ContainsHelper<type, _this, eval>::_value;
 };
 
 template<template<typename> typename constr, AnyTypeStack cur>
@@ -115,7 +144,7 @@ struct CheckStackTypeConstrHelper<constr, cur> {
     static constexpr bool _value = constr<typename cur::_top>::_value && _next::_value;
 };
 
-template<template<typename> typename constr, AnyEmptyTypeStack cur>
+template<template<typename> typename constr, EmptyTypeStack cur>
 struct CheckStackTypeConstrHelper<constr, cur> {
     static constexpr bool _value = true;
 };
@@ -134,7 +163,7 @@ struct StackItemsUniqueHelper<stack, found> {
     static constexpr bool _value = !found::template contains_v<typename stack::_top> && _next::_value;
 };
 
-template<AnyEmptyTypeStack stack, AnyTypeStack found>
+template<EmptyTypeStack stack, AnyTypeStack found>
 struct StackItemsUniqueHelper<stack, found> {
     static constexpr bool _value = true;
 };
@@ -144,4 +173,3 @@ static constexpr bool is_set_type_stack_v = is_type_stack_v<type> && StackItemsU
 
 template<typename type>
 concept AnySetTypeStack = is_set_type_stack_v<type>;
-
