@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) void {
         },
         .flags = &[_][]const u8{
             "-std=c++20",
+            "-Wall",
         },
     });
 

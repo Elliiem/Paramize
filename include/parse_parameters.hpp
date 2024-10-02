@@ -64,7 +64,7 @@ template<AnyOptParamRegion region, AnyParamTag tag>
 static constexpr bool check_opt_region_tag_constr_v = false;
 
 template<AnyParamRegion region, AnyParamTag tag>
-static constexpr bool check_opt_region_tag_constr_v<region, tag> = region::_tagset::template contains_v<tag>;
+static constexpr bool check_opt_region_tag_constr_v<region, tag> = region::_tagset::template contains<tag>;
 
 template<AnyParamRegion... regions>
 using ParamRegionStack = TypeStack<regions...>;
@@ -216,7 +216,7 @@ struct IsPartOfRegionHelper;
 
 template<AnyParamValue param, AnySetParamRegion region, AnyParamStack parsed, AnyOptParamRegion next>
 struct IsPartOfRegionHelper<param, region, parsed, next> {
-    static constexpr bool _fits_region = region::_tagset::template contains_v<tagof<param>>;
+    static constexpr bool _fits_region = region::_tagset::template contains<tagof<param>>;
     static constexpr bool _fits_next_region = check_opt_region_tag_constr_v<next, tagof<param>>;
 
     static constexpr bool _value = _fits_region || !_fits_next_region;
@@ -224,7 +224,7 @@ struct IsPartOfRegionHelper<param, region, parsed, next> {
 
 template<AnyParamValue param, AnyListParamRegion region, AnyParamStack parsed, AnyOptParamRegion next>
 struct IsPartOfRegionHelper<param, region, parsed, next> {
-    static constexpr bool _fits_region = region::_tagset::template contains_v<tagof<param>>;
+    static constexpr bool _fits_region = region::_tagset::template contains<tagof<param>>;
     static constexpr bool _fits_next_region = check_opt_region_tag_constr_v<next, tagof<param>>;
 
     static constexpr bool _within_parameter_range = parsed::_lenght + 1 <= region::_max;
@@ -275,8 +275,8 @@ struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _next_stack = stack::template pop<1>;
     using _next_checked = checked::template push<_top>;
 
-    static constexpr bool _is_valid_type = region::_tagset::template contains_v<_tag>;
-    static constexpr bool _is_redifinition = param_stack_contains_tag_v<checked, _tag>;
+    static constexpr bool _is_valid_type = region::_tagset::template contains<_tag>;
+    static constexpr bool _is_redifinition = checked::template contains<_tag, SameTagCmp>;
 
     static constexpr bool _is_valid = _is_valid_type && !_is_redifinition;
 
@@ -301,7 +301,7 @@ struct CheckParseRegionResultTypeConstrHelper<region, parsed, stack, checked> {
     using _next_stack = stack::template pop<1>;
     using _next_checked = checked::template push<_cur>;
 
-    static constexpr bool _is_valid_type = region::_tagset::template contains_v<_tag>;
+    static constexpr bool _is_valid_type = region::_tagset::template contains<_tag>;
 
     static constexpr bool _is_valid = _is_valid_type;
 
@@ -326,8 +326,8 @@ template<AnySetParamRegion region, AnyParamStack params, AnyParamStack defaults,
 struct CheckRegionResultDefinitionHelper<region, params, defaults, tags, checked> {
     using _cur = tags::_top;
 
-    static constexpr bool _is_defined = param_stack_contains_tag_v<params, _cur>;
-    static constexpr bool _has_default = param_stack_contains_tag_v<defaults, _cur>;
+    static constexpr bool _is_defined = params::template contains<_cur, SameTagCmp>;
+    static constexpr bool _has_default = defaults::template contains<_cur, SameTagCmp>;
 
     static constexpr bool _is_valid = _is_defined || _has_default;
 

@@ -60,78 +60,77 @@ concept EmptyTypeStack = AnyTypeStack<type> && is_empty_type_stack_v<type>;
 template<typename type>
 concept AnyFilledTypeStack = AnyTypeStack<type> && is_filled_type_stack_v<type>;
 
-template<Nopt... stack>
+template<Nopt... items>
 struct TypeStack {
-    using _this = TypeStack<stack...>;
+    using _this = TypeStack<items...>;
 
-    using _top = Split<stack...>::_top; 
-    using _trail = Split<stack...>::_trail;
+    using _top = Split<items...>::_top; 
+    using _trail = Split<items...>::_trail;
 
-    static constexpr size_t _lenght = sizeof...(stack);
+    static constexpr size_t _lenght = sizeof...(items);
 
-    template<size_t n, AnyTypeStack cur>
+    template<size_t n, AnyTypeStack stack>
     struct PopHelper;
 
-    template<size_t n, AnyFilledTypeStack cur>
-    struct PopHelper<n, cur> {
-        using _value = PopHelper<n - 1, typename cur::_trail>::_value;
+    template<size_t n, AnyFilledTypeStack stack>
+    struct PopHelper<n, stack> {
+        using _value = PopHelper<n - 1, typename stack::_trail>::_value;
     };
 
-    template<size_t n, EmptyTypeStack cur>
-    struct PopHelper<n, cur> {
-        using _value = cur; 
+    template<size_t n, EmptyTypeStack stack>
+    struct PopHelper<n, stack> {
+        using _value = stack; 
     };
 
-    template<AnyTypeStack cur>
-    struct PopHelper<0, cur> {
-        using _value = cur; 
+    template<AnyTypeStack stack>
+    struct PopHelper<0, stack> {
+        using _value = stack; 
     };
 
     template<size_t n>
     using pop = PopHelper<n, _this>::_value;
 
-    template<Nopt... items>
-    using push = TypeStack<items..., stack...>;
+    template<Nopt... stack>
+    using push = TypeStack<stack..., items...>;
 
     template<AnyTypeStack cur, size_t i>
     struct AtHelper {
         using _next = AtHelper<typename cur::template pop<1>, i - 1>;
     };
 
-    template<AnyTypeStack cur>
-    struct AtHelper<cur, 0> {
-        using _value = cur::_top;
+    template<AnyTypeStack stack>
+    struct AtHelper<stack, 0> {
+        using _value = stack::_top;
     };
 
-    template<EmptyTypeStack cur, size_t i>
-    struct AtHelper<cur, i> {
+    template<EmptyTypeStack stack, size_t i>
+    struct AtHelper<stack, i> {
         using _value = Null;
     };
 
     template<size_t i>
     using at = AtHelper<_this, i>;
 
-    template<Nopt search, AnyTypeStack cur, template<Opt, Opt> typename eval>
+    //  FIXME: Constrain this mf
+    template<Nopt item, AnyTypeStack stack, template<Opt, Opt> typename cmp>
     struct ContainsHelper {
-        using _next = ContainsHelper<search, typename cur::template pop<1>, eval>;
+        using _next = ContainsHelper<item, typename stack::template pop<1>, cmp>;
 
-        static constexpr bool _value = eval<typename cur::_top, search>::_value || _next::_value;
+        static constexpr bool _value = cmp<typename stack::_top, item>::_value || _next::_value;
     };
 
-    template<Nopt type, EmptyTypeStack cur, template<Opt, Opt> typename cmp>
-        requires AnyValueType<cmp<Null, Null>>
-    struct ContainsHelper<type, cur, cmp> {
+    template<Nopt item, EmptyTypeStack stack, template<Opt, Opt> typename cmp>
+    struct ContainsHelper<item, stack, cmp> {
         static constexpr bool _value = false;
     };
 
     template<typename a, typename b>
-    struct IsSameCmp {
+    struct SameCmp {
         static constexpr bool _value = std::is_same_v<a, b>;
     };
 
-    template<Nopt type, template<Opt, Opt> typename eval = IsSameCmp>
-        requires AnyValueType<eval<Null, Null>>
-    static constexpr bool contains_v = ContainsHelper<type, _this, eval>::_value;
+    template<Nopt item, template<Opt, Opt> typename eval = SameCmp>
+    static constexpr bool contains = ContainsHelper<item, _this, eval>::_value;
 };
 
 template<template<typename> typename constr, AnyTypeStack cur>
@@ -160,7 +159,7 @@ template<AnyFilledTypeStack stack, AnyTypeStack found>
 struct StackItemsUniqueHelper<stack, found> {
     using _next = StackItemsUniqueHelper<typename stack::template pop<1>, typename found::template push<typename stack::_top>>;
 
-    static constexpr bool _value = !found::template contains_v<typename stack::_top> && _next::_value;
+    static constexpr bool _value = !found::template contains<typename stack::_top> && _next::_value;
 };
 
 template<EmptyTypeStack stack, AnyTypeStack found>
@@ -173,3 +172,6 @@ static constexpr bool is_set_type_stack_v = is_type_stack_v<type> && StackItemsU
 
 template<typename type>
 concept AnySetTypeStack = is_set_type_stack_v<type>;
+
+
+

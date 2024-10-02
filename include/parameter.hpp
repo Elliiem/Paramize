@@ -34,7 +34,7 @@ template<typename type>
 concept AnyRegionTagStack = TypedTagStack<type, RegionTag>;
 
 template<typename tag, typename tagset>
-concept MemberTag = AnyTag<tag> && TypedTagStack<tagset, getTagType<tag>> && tagset::template contains_v<tag>;
+concept MemberTag = AnyTag<tag> && TypedTagStack<tagset, getTagType<tag>> && tagset::template contains<tag>;
 
 template<AnyParamTag tag>
 struct Parameter {
@@ -80,7 +80,7 @@ template<AnyFilledParamStack stack, AnyTagStack constr>
 struct CheckParamStackTagConstrHelper<stack, constr> {
     using _next = CheckParamStackTagConstrHelper<typename stack::template pop<1>, constr>;
 
-    static constexpr bool _value = constr::template contains_v<tagof<typename stack::_top>> && _next::_value;
+    static constexpr bool _value = constr::template contains<tagof<typename stack::_top>> && _next::_value;
 };
 
 template<EmptyParamStack stack, AnyTagStack constr>
@@ -150,3 +150,8 @@ struct ParamStackContainsTagHelper<stack, search> {
 
 template<AnyParamStack stack, AnyParamTag search>
 static constexpr bool param_stack_contains_tag_v = ParamStackContainsTagHelper<stack, search>::_value;
+
+template<AnyParamValue param, AnyParamTag cmp>
+struct SameTagCmp {
+    static constexpr bool _value = std::is_same_v<tagof<param>, cmp>;
+};
